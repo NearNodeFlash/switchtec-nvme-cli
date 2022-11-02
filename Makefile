@@ -31,14 +31,14 @@ ifeq ($(LIBHUGETLBFS),0)
 	override LIB_DEPENDS += hugetlbfs
 endif
 
-INC=-Iutil -Iplugins/microchip 
+INC=-Iutil -Iplugins/microchip
 
 ifeq ($(HAVE_SYSTEMD),0)
 	override LDFLAGS += -lsystemd
 	override CFLAGS += -DHAVE_SYSTEMD
 endif
 
-LDFLAGS += -lswitchtec -lcrypto
+override LDFLAGS += -lswitchtec -lcrypto
 
 RPMBUILD = rpmbuild
 TAR = tar
