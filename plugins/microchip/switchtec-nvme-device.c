@@ -105,6 +105,9 @@ int pax_nvme_submit_admin_passthru_1k_rsp(int fd,
 	if (!status) {
 		cmd->result = rsp.nvme_cqe[0];
 		if (cmd->addr) {
+			if (rsp.hdr.rsp_len == 0)
+				return -EIO;
+
 			memcpy((uint64_t *)cmd->addr,
 				rsp.nvme_data,
 				rsp.hdr.rsp_len - 4 * 4);
@@ -158,6 +161,9 @@ int pax_nvme_submit_admin_passthru_4k_rsp(int fd,
 	if (!status) {
 		cmd->result = rsp.nvme_cqe[0];
 		if (cmd->addr) {
+			if (rsp_len == 0)
+				return -EIO;
+
 			memcpy((uint64_t *)cmd->addr,
 				rsp.nvme_data,
 				rsp_len - 4 * 4);
