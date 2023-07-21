@@ -10,7 +10,7 @@ LF='
 # then try git-describe, then default.
 if test -f version
 then
-	VN=$(cat version) || VN="$DEF_VER"
+	VN=$(sed 1q version) || VN="$DEF_VER"
 elif test -d .git -o -f .git &&
 	VN=$(git describe --tags --match "v[0-9]*" --abbrev=4 HEAD 2>/dev/null) &&
 	case "$VN" in
@@ -21,22 +21,30 @@ elif test -d .git -o -f .git &&
 		VN="$VN-dirty" ;;
 	esac
 then
+	OVN="$VN"
 	VN=$(echo "$VN" | sed -e 's/-/./g');
 else
 	VN="$DEF_VER"
 fi
 
 VN=$(expr "$VN" : v*'\(.*\)')
+OVN=$(expr "$OVN" : v*'\(.*\)')
+MVN=$(expr "$OVN" : v*'\([0-9.]*\)')
+RVN=$(expr "$OVN" : v*'[0-9.]*\-\(.*\)')
+test -n "$RVN" && RDVN=0.$(echo "$RVN" | sed -e 's/-/./g') || RDVN="1"
 
 if test -r $GVF
 then
-	VC=$(sed -e 's/^NVME_VERSION = //' <$GVF)
+	VC=$(sed 1q $GVF | sed -e 's/^NVME_VERSION = //')
 else
 	VC=unset
 fi
 test "$VN" = "$VC" || {
 	echo >&2 "NVME_VERSION = $VN"
 	echo "NVME_VERSION = $VN" >$GVF
+	echo "DOTDASH_VERSION = $OVN" >>$GVF
+	echo "SPEC_VERSION = $MVN" >>$GVF
+	echo "SPEC_RELEASE = $RDVN" >>$GVF
 }
 
 
