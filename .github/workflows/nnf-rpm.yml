@@ -38,7 +38,8 @@ jobs:
           echo 'addFilter("zero-length")' > ~/.config/rpmlint
 
       - name: add libswitchtec
-        run: dnf --verbose install -y ${{ env.SWITCHTEC_LIB_PKG }}
+        #run: dnf --verbose install -y ${{ env.SWITCHTEC_LIB_PKG }}
+        run: dnf --verbose install -y switchtec-4.2-0.rc1.3.ge8f8660.el8.x86_64.rpm
 
       - name: checkout
         uses: actions/checkout@v3
