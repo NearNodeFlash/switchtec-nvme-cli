@@ -5,7 +5,7 @@ LIBUUID = $(shell $(LD) -o /dev/null -luuid >/dev/null 2>&1; echo $$?)
 
 NVME = switchtec-nvme
 LIBHUGETLBFS = $(shell $(LD) -o /dev/null -lhugetlbfs >/dev/null 2>&1; echo $$?)
-HAVE_SYSTEMD = $(shell pkg-config --exists libsystemd  --atleast-version=242; echo $$?)
+HAVE_SYSTEMD = $(shell pkg-config --exists libsystemd  --atleast-version=232; echo $$?)
 INSTALL ?= install
 DESTDIR =
 DESTDIROLD = /usr/local/sbin
@@ -38,7 +38,7 @@ ifeq ($(HAVE_SYSTEMD),0)
 	override CFLAGS += -DHAVE_SYSTEMD
 endif
 
-LDFLAGS += -lswitchtec -lcrypto
+override LDFLAGS += -lswitchtec -lcrypto
 
 RPMBUILD = rpmbuild
 TAR = tar
@@ -125,13 +125,13 @@ install-man:
 	$(MAKE) -C Documentation install-no-build
 
 install-bin: default
-	$(RM) $(DESTDIROLD)/nvme
+	$(RM) $(DESTDIROLD)/$(NVME)
 	$(INSTALL) -d $(DESTDIR)$(SBINDIR)
 	$(INSTALL) -m 755 $(NVME) $(DESTDIR)$(SBINDIR)
 
 install-bash-completion:
 	$(INSTALL) -d $(DESTDIR)$(PREFIX)/share/bash-completion/completions
-	$(INSTALL) -m 644 -T ./completions/bash-nvme-completion.sh $(DESTDIR)$(PREFIX)/share/bash-completion/completions/nvme
+	$(INSTALL) -m 644 -T ./completions/bash-nvme-completion.sh $(DESTDIR)$(PREFIX)/share/bash-completion/completions/$(NVME)
 
 install-systemd:
 	$(INSTALL) -d $(DESTDIR)$(SYSTEMDDIR)/system
@@ -147,40 +147,43 @@ install-dracut: 70-nvmf-autoconnect.conf
 
 install-zsh-completion:
 	$(INSTALL) -d $(DESTDIR)$(PREFIX)/share/zsh/site-functions
-	$(INSTALL) -m 644 -T ./completions/_nvme $(DESTDIR)$(PREFIX)/share/zsh/site-functions/_nvme
+	$(INSTALL) -m 644 -T ./completions/_nvme $(DESTDIR)$(PREFIX)/share/zsh/site-functions/_$(NVME)
 
 install-hostparams: install-etc
-	if [ ! -s $(DESTDIR)$(SYSCONFDIR)/nvme/hostnqn ]; then \
-		echo `$(DESTDIR)$(SBINDIR)/nvme gen-hostnqn` > $(DESTDIR)$(SYSCONFDIR)/nvme/hostnqn; \
-	fi
-	if [ ! -s $(DESTDIR)$(SYSCONFDIR)/nvme/hostid ]; then \
-		uuidgen > $(DESTDIR)$(SYSCONFDIR)/nvme/hostid; \
+	if [[ $(DESTDIR)$(SYSCONFIGDIR) != *BUILDROOT* ]]; then \
+		if [[ ! -s $(DESTDIR)$(SYSCONFDIR)/$(NVME)/hostnqn ]]; then \
+			echo `$(DESTDIR)$(SBINDIR)/$(NVME) gen-hostnqn` > $(DESTDIR)$(SYSCONFDIR)/$(NVME)/hostnqn; \
+		fi; \
+		if [[ ! -s $(DESTDIR)$(SYSCONFDIR)/$(NVME)/hostid ]]; then \
+			uuidgen > $(DESTDIR)$(SYSCONFDIR)/$(NVME)/hostid; \
+		fi \
 	fi
 
 install-etc:
-	$(INSTALL) -d $(DESTDIR)$(SYSCONFDIR)/nvme
-	touch $(DESTDIR)$(SYSCONFDIR)/nvme/hostnqn
-	touch $(DESTDIR)$(SYSCONFDIR)/nvme/hostid
-	if [ ! -f $(DESTDIR)$(SYSCONFDIR)/nvme/discovery.conf ]; then \
-		$(INSTALL) -m 644 -T ./etc/discovery.conf.in $(DESTDIR)$(SYSCONFDIR)/nvme/discovery.conf; \
+	$(INSTALL) -d $(DESTDIR)$(SYSCONFDIR)/$(NVME)
+	touch $(DESTDIR)$(SYSCONFDIR)/$(NVME)/hostnqn
+	touch $(DESTDIR)$(SYSCONFDIR)/$(NVME)/hostid
+	if [ ! -f $(DESTDIR)$(SYSCONFDIR)/$(NVME)/discovery.conf ]; then \
+		$(INSTALL) -m 644 -T ./etc/discovery.conf.in $(DESTDIR)$(SYSCONFDIR)/$(NVME)/discovery.conf; \
 	fi
 
 install-spec: install-bin install-man install-bash-completion install-zsh-completion install-etc install-systemd install-udev install-dracut
 install: install-spec install-hostparams
 
-nvme.spec: nvme.spec.in NVME-VERSION-FILE
-	sed -e 's/@@VERSION@@/$(NVME_VERSION)/g' < $< > $@+
+$(NVME).spec: nvme.spec.in NVME-VERSION-FILE
+	sed -e 's/@@VERSION@@/$(SPEC_VERSION)/g' < $< | sed -e 's/@@RELEASE@@/$(SPEC_RELEASE)/g' > $@+
 	mv $@+ $@
 
 70-nvmf-autoconnect.conf: nvmf-autoconnect/dracut-conf/70-nvmf-autoconnect.conf.in
 	sed -e 's#@@UDEVRULESDIR@@#$(UDEVRULESDIR)#g' < $< > $@+
 	mv $@+ $@
 
-dist: nvme.spec
-	git archive --format=tar --prefix=nvme-$(NVME_VERSION)/ HEAD > nvme-$(NVME_VERSION).tar
+PKG=$(NVME)-$(SPEC_VERSION)-$(SPEC_RELEASE)
+dist: $(NVME).spec
+	git archive --format=tar --prefix=$(PKG)/ HEAD > $(PKG).tar
 	@echo $(NVME_VERSION) > version
-	$(TAR) rf  nvme-$(NVME_VERSION).tar nvme.spec version
-	gzip -f -9 nvme-$(NVME_VERSION).tar
+	$(TAR) -rf  $(PKG).tar --xform="s%^%$(PKG)/%" $(NVME).spec version
+	gzip -f -9 $(PKG).tar
 
 control: nvme.control.in NVME-VERSION-FILE
 	sed -e 's/@@VERSION@@/$(NVME_VERSION)/g' < $< > $@+
@@ -189,12 +192,12 @@ control: nvme.control.in NVME-VERSION-FILE
 	mv $@+ $@
 
 pkg: control nvme.control.in
-	mkdir -p nvme-$(NVME_VERSION)$(SBINDIR)
-	mkdir -p nvme-$(NVME_VERSION)$(PREFIX)/share/man/man1
-	mkdir -p nvme-$(NVME_VERSION)/DEBIAN/
-	cp Documentation/*.1 nvme-$(NVME_VERSION)$(PREFIX)/share/man/man1
-	cp nvme nvme-$(NVME_VERSION)$(SBINDIR)
-	cp control nvme-$(NVME_VERSION)/DEBIAN/
+	mkdir -p $(PKG)$(SBINDIR)
+	mkdir -p $(PKG)$(PREFIX)/share/man/man1
+	mkdir -p $(PKG)/DEBIAN/
+	cp Documentation/*.1 $(PKG)$(PREFIX)/share/man/man1
+	cp $(NVME) $(PKG)$(SBINDIR)
+	cp control $(PKG)/DEBIAN/
 
 # Make a reproducible tar.gz in the super-directory. Uses
 # git-restore-mtime if available to adjust timestamps.
@@ -234,10 +237,10 @@ deb-ppa: deb-changelog dist-orig
 	debuild -uc -us -S
 
 deb-light: $(NVME) pkg nvme.control.in
-	dpkg-deb --build nvme-$(NVME_VERSION)
+	dpkg-deb --build $(PKG)
 
 rpm: dist
-	$(RPMBUILD) --define '_libdir ${LIBDIR}' -ta nvme-$(NVME_VERSION).tar.gz
+	$(RPMBUILD) --define '_libdir ${LIBDIR}' -ta $(PKG).tar.gz
 
 .PHONY: default doc all clean clobber install-man install-bin install
 .PHONY: dist pkg dist-orig deb deb-light rpm FORCE test
