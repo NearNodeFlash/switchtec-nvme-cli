@@ -4,7 +4,7 @@ on: push
 
 env:
   STARTS_WITH_RELEASES: 'refs/heads/releases/nnf'
-  SWITCHTEC_LIB_PKG: https://github.com/NearNodeFlash/switchtec-user/releases/download/4.0-rc1-16-ge209962/switchtec-4.0-0.rc1.16.ge209962.el8.x86_64.rpm
+  SWITCHTEC_LIB_PKG: https://github.com/NearNodeFlash/switchtec-user/releases/download/4.2-rc1-8-gf5ad807/switchtec-4.2-0.rc1.8.gf5ad807.el8.x86_64.rpm
 
 jobs:
   build-rpm:
@@ -37,17 +37,14 @@ jobs:
           mkdir ~/.config
           echo 'addFilter("zero-length")' > ~/.config/rpmlint
 
-#      - name: add libswitchtec
-#        run: dnf --verbose install -y ${{ env.SWITCHTEC_LIB_PKG }}
+      - name: add libswitchtec
+        run: dnf --verbose install -y ${{ env.SWITCHTEC_LIB_PKG }}
 
       - name: checkout
         uses: actions/checkout@v3
         with:
           # Because we need the tags to build the version ID.
           fetch-depth: 0
-
-      - name: add libswitchtec
-        run: dnf --verbose install -y switchtec-4.2-0.rc1.3.ge8f8660.el8.x86_64.rpm
 
       - name: generate the version ID
         # The NVME-VERSION-GEN tool can generate a version ID that includes the
