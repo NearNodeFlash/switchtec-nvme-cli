@@ -56,7 +56,7 @@ QUIET_CC=
 
 default: $(NVME)
 
-NVME-VERSION-FILE: FORCE
+NVME-VERSION-FILE:
 	@$(SHELL_PATH) ./NVME-VERSION-GEN
 -include NVME-VERSION-FILE
 override CFLAGS += -DNVME_VERSION='"$(NVME_VERSION)"'
@@ -171,14 +171,14 @@ install-spec: install-bin install-man install-bash-completion install-zsh-comple
 install: install-spec install-hostparams
 
 $(NVME).spec: nvme.spec.in NVME-VERSION-FILE
-	sed -e 's/@@VERSION@@/$(SPEC_VERSION)/g' < $< | sed -e 's/@@RELEASE@@/$(SPEC_RELEASE)/g' > $@+
+	sed -e 's/@@VERSION@@/$(NVME_VERSION)/g' < $< | sed -e 's/@@RELEASE@@/$(SPEC_RELEASE)/g' > $@+
 	mv $@+ $@
 
 70-nvmf-autoconnect.conf: nvmf-autoconnect/dracut-conf/70-nvmf-autoconnect.conf.in
 	sed -e 's#@@UDEVRULESDIR@@#$(UDEVRULESDIR)#g' < $< > $@+
 	mv $@+ $@
 
-PKG=$(NVME)-$(SPEC_VERSION)-$(SPEC_RELEASE)
+PKG=$(NVME)-$(NVME_VERSION)-$(SPEC_RELEASE)
 dist: $(NVME).spec
 	git archive --format=tar --prefix=$(PKG)/ HEAD > $(PKG).tar
 	@echo $(NVME_VERSION) > version
@@ -243,4 +243,4 @@ rpm: dist
 	$(RPMBUILD) --define '_libdir ${LIBDIR}' -ta $(PKG).tar.gz
 
 .PHONY: default doc all clean clobber install-man install-bin install
-.PHONY: dist pkg dist-orig deb deb-light rpm FORCE test
+.PHONY: dist pkg dist-orig deb deb-light rpm test
