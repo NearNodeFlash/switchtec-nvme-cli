@@ -4,7 +4,7 @@ on: push
 
 env:
   STARTS_WITH_RELEASES: 'refs/heads/releases/nnf'
-  SWITCHTEC_LIB_PKG: https://github.com/NearNodeFlash/switchtec-user/releases/download/v4.2-rc1_15HPE/switchtec-4.2.rc1_15HPE-1.el8.x86_64.rpm
+  SWITCHTEC_LIB_PKG: https://github.com/NearNodeFlash/switchtec-user/releases/download/4.2-rc1_17HPE/switchtec-4.2.rc1_17HPE-1.el8.x86_64.rpm
 
 jobs:
   build-rpm:
